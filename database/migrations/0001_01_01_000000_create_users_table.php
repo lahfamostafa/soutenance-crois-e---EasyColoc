@@ -17,6 +17,12 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            $table->enum('role',['user','admin'])->default('user');
+            $table->integer('reputation')->default(0);
+            $table->boolean('is_banned')->default(false);
+            $table->decimal('balance')->default(0);
+        
             $table->rememberToken();
             $table->timestamps();
         });
@@ -45,5 +51,9 @@ return new class extends Migration
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+
+        Schema::table('table_users', function (Blueprint $table) {
+            $table->dropColumn(['reputation','is_banned','balance']);
+        });
     }
 };
