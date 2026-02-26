@@ -13,10 +13,13 @@ return new class extends Migration
     {
         Schema::create('member_ships', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id');
+            $table->foreignId('colocation_id');
             $table->enum('role',['membre','owner']);
             $table->boolean('is_active')->default(true);
-            $table->decimal('balance');
+            $table->decimal('balance')->default(0);
             $table->dateTime('joined_at');
+            $table->dateTime('left_at')->nullable();
             $table->timestamps();
         });
     }

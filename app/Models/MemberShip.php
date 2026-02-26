@@ -13,6 +13,8 @@ class MemberShip extends Model
         'colocation_id',
         'role',
         'balance',
+        'joined_at',
+        'left_at',
     ];
 
     public function user(){
