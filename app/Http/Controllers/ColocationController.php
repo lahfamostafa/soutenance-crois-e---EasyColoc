@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Colocation;
+use App\Models\MemberShip;
+use GrahamCampbell\ResultType\Success;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
@@ -22,7 +24,13 @@ class ColocationController extends Controller
      */
     public function create()
     {
-        //
+        $hasActive = MemberShip::where('user_id',Auth::id())->whereNull('left_at')->exists();
+
+        if($hasActive){
+            return redirect('dashboard')->with('error', 'Vous avez déjà une colocation active.');
+        }
+
+        return view('colocations.create');
     }
 
     /**
@@ -30,7 +38,29 @@ class ColocationController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $hasActive = MemberShip::where('user_id',Auth::id())->whereNull('left_at')->exists();
+
+        if($hasActive){
+            return redirect()->back()->with('error', 'Vous avez déjà une colocation active.');
+        }
+
+        $colocation = Colocation::create([
+            'name' => $request->name,
+            'owner_id' => Auth::id(),
+        ]);
+
+        MemberShip::create([
+            'user_id' => Auth::id(),
+            'colocation_id' =>$colocation->id,
+            'role' => 'owner',
+            'joined_at' => now(),
+        ]);
+
+        return redirect()->route('colocations.show',$colocation);
     }
 
     /**
@@ -38,7 +68,9 @@ class ColocationController extends Controller
      */
     public function show(Colocation $colocation)
     {
-        //
+        $colocation->load(['owner','memberships.user']);
+
+        return view('colocations.show',compact('colocation'));
     }
 
     /**
@@ -54,7 +86,17 @@ class ColocationController extends Controller
      */
     public function update(Request $request, Colocation $colocation)
     {
-        //
+        $this->authorizeOwner($colocation);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $colocation->update([
+            'name' => $request->name,
+        ]);
+
+        return back()->with("succes",'Colocation mise à jour .');
     }
 
     /**
@@ -62,6 +104,18 @@ class ColocationController extends Controller
      */
     public function destroy(Colocation $colocation)
     {
-        //
+        $this->authorizeOwner($colocation);
+
+        $colocation->update([
+            'status' => 'inactive',
+        ]);
+
+        return redirect()->route('dashboard')->with('success','Colocation annulé');
+    }
+
+    private function authorizeOwner(Colocation $colocation){
+        if($colocation->owner_id !== Auth::id()){
+            abort(403);
+        }
     }
 }
