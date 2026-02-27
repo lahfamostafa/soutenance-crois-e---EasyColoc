@@ -8,9 +8,11 @@ use App\Models\MemberShip;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\InvitationMail;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 
-use function Symfony\Component\Clock\now;
 
 class InvitationController extends Controller
 {
@@ -25,7 +27,7 @@ class InvitationController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function Store(Request $request , Colocation $colocation)
+    public function store(Request $request , Colocation $colocation)
     {
         $user = Auth::user();
         abort_unless($colocation->owner_id === $user->id , 403);
@@ -38,9 +40,13 @@ class InvitationController extends Controller
             return back()->with('error','Vous ne pouvez pas inviter vous-même .');
         }
 
-        $exist = Invitation::where('colocation_id',$colocation->id())
+        $exists = Invitation::where('colocation_id',$colocation->id)
             ->where('invited_email',$request->invited_email)
             ->where('status','pending')->exists();
+
+        if ($exists) {
+            return back()->with('error', 'Une invitation est déjà en attente pour cet email.');
+        }
 
         $token = Str::random(40);
 
@@ -50,9 +56,14 @@ class InvitationController extends Controller
             'token' => $token,
             'status' => 'pending',
             'sent_by' => $user->id,
+            'expire_at' => now()->addMinutes(2),
         ]);
 
-        return back()->with('success','Invitation envoyée avec succes .');
+        $invitation->load(['colocation','sender']);
+
+        Mail::to($invitation->invited_email)->send(new InvitationMail($invitation));
+
+        // return back()->with('success','Invitation envoyée avec succes .');
     }
 
     /**
@@ -71,7 +82,13 @@ class InvitationController extends Controller
     public function accept($token)
     {
         $user = Auth::user();
-        $invitation = Invitation::where('token',$token);
+        $invitation = Invitation::where('token',$token)->firstOrFail();
+
+        if($invitation->expire_at && now()->greaterThan($invitation->expire_at)){
+            $invitation->update(['status' => 'expired']);
+
+            return redirect()->route('dashboard')->with('error','Invitation expiré !');
+        }
 
         if($invitation->status !== 'pending'){
             return redirect()->route('dashboard')->with('error',"L'invitaion déja traitée .");
@@ -91,28 +108,28 @@ class InvitationController extends Controller
                 'joined_at' => now(),
             ]);
 
-            Invitation::update([
+            $invitation->update([
                 'status' => 'accepted',
             ]);
         });
 
-        return redirect()->route('colocations.show')->with('success','Invitation accepté , Bienvenue !');
+        return redirect()->route('colocations.show',$invitation->colocation_id)->with('success','Invitation accepté , Bienvenue !');
     }
 
     public function refuse($token)
     {
         $user = Auth::user();
-        $invitation = Invitation::where('token',$token);
+        $invitation = Invitation::where('token',$token)->firstOrFail();
 
         if($invitation->status !== 'pending'){
             return redirect()->route('dashboard')->with('error',"L'invitaion déja traitée .");
         }
 
-        Invitation::update([
+        $invitation->update([
             'status' => 'refused',
         ]);
 
-        return redirect()->route('colocations.show')->with('success','Invitation refusée .');
+        return redirect()->route('colocations.show',$invitation->colocation_id)->with('success','Invitation refusée .');
     }
 
     /**

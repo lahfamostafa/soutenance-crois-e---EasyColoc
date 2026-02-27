@@ -15,6 +15,7 @@ class Invitation extends Model
         'token',
         'status',
         'sent_by',
+        'expire_at',
     ];
 
     public function colocation(){
@@ -24,4 +25,8 @@ class Invitation extends Model
     public function sender(){
         return $this->belongsTo(User::class, 'sent_by');
     }
+
+    protected $casts = [
+        'expire_at' => 'datetime',
+    ];
 }
