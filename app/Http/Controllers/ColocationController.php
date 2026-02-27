@@ -15,7 +15,9 @@ class ColocationController extends Controller
      */
     public function index()
     {
-        $colocations = Colocation::where('owner_id',Auth::id())->get();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $colocations = $user->colocations()->wherePivotNull('left_at')->get();
         return view('colocations.index',compact('colocations'));
     }
 
@@ -24,10 +26,12 @@ class ColocationController extends Controller
      */
     public function create()
     {
-        $hasActive = MemberShip::where('user_id',Auth::id())->whereNull('left_at')->exists();
+        $hasActive = MemberShip::where('user_id',Auth::id())->where('left_at')->whereHas('colocation',function ($q){
+            $q->where('status','active');
+        })->exists();
 
         if($hasActive){
-            return redirect('dashboard')->with('error', 'Vous avez déjà une colocation active.');
+            return redirect()->route('colocations.index')->with('error', 'Vous avez déjà une colocation active.');
         }
 
         return view('colocations.create');
@@ -45,7 +49,7 @@ class ColocationController extends Controller
         $hasActive = MemberShip::where('user_id',Auth::id())->whereNull('left_at')->exists();
 
         if($hasActive){
-            return redirect()->back()->with('error', 'Vous avez déjà une colocation active.');
+            return redirect()->route('colocations.index')->with('error', 'Vous avez déjà une colocation active.');
         }
 
         $colocation = Colocation::create([
@@ -68,7 +72,7 @@ class ColocationController extends Controller
      */
     public function show(Colocation $colocation)
     {
-        $colocation->load(['owner','memberships.user']);
+        $colocation->load(['owner','memberShips.user','invitations']);
 
         return view('colocations.show',compact('colocation'));
     }
@@ -78,7 +82,7 @@ class ColocationController extends Controller
      */
     public function edit(Colocation $colocation)
     {
-        //
+        
     }
 
     /**
