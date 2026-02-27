@@ -1,17 +1,23 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Colocations</title>
-</head>
-<body>
-
 <h1>Mes colocations</h1>
 
-@foreach($colocations as $colocation)
-    <div>
-        {{ $colocation->name }}
+@if(session('error'))
+    <div style="color:red;">
+        {{ session('error') }}
     </div>
-@endforeach
+@endif
 
-</body>
-</html>
+<a href="{{ route('colocations.create') }}">Créer une colocation</a>
+
+<hr>
+
+@if($colocations->isEmpty())
+    <p>Aucune colocation trouvée.</p>
+@else
+    @foreach($colocations as $colocation)
+        <div>
+            <a href="{{ route('colocations.show', $colocation) }}">
+                {{ $colocation->name }}
+            </a>
+        </div>
+    @endforeach
+@endif
