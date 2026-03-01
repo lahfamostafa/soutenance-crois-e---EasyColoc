@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ColocationController;
+use App\Http\Controllers\ExpenceController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberShipController;
 use App\Http\Controllers\ProfileController;
@@ -19,13 +20,13 @@ Route::middleware(['auth'])->group(function (){
     Route::resource('colocations',ColocationController::class);
 
     Route::post('/colocations/{colocation}/invitations',[InvitationController::class,'store'])->name('invitations.store');
-    Route::get('/colocations/{colocation}/invite',[InvitationController::class,'create'])->name('invitations.create');
     Route::get('/colocations/{colocation}/members',[MemberShipController::class,'index'])->name('invitations.index');
     Route::get('/invitations/{token}',[InvitationController::class,'show'])->middleware('auth')->name('invitations.show');
     Route::post('/invitations/{token}/accept',[InvitationController::class,'accept'])->name('invitations.accept');
     Route::post('/invitations/{token}/refuse',[InvitationController::class,'refuse'])->name('invitations.refuse');
     
     Route::post('/colocations/{colocation}/quit',[MemberShipController::class,'quit'])->name('colocations.quit');
+    Route::post('/colocations/{colocation}/expences',[ExpenceController::class,'store'])->name('expences.store');
 });
 
 Route::get('/dashboard', function () {
