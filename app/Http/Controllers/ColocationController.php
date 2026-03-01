@@ -15,9 +15,16 @@ class ColocationController extends Controller
      */
     public function index()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
-        $colocations = $user->colocations()->wherePivotNull('left_at')->get();
+        $colocations = Colocation::query()->where(function ($q) use ($user){
+            $q->where('owner_id',$user->id)
+                ->orWhereHas('memberShips',fn($m) => $m->where('user_id',$user->id)->whereNull('left_at'));
+        })
+        ->withCount([
+            'memberShips as active_members_count' => fn($q) => $q->whereNull('left_at'),
+            'invitations as pending_invitations_count' => fn($q) => $q->where('status','pending')
+        ])->latest()->get();
+
         return view('colocations.index',compact('colocations'));
     }
 
@@ -26,8 +33,10 @@ class ColocationController extends Controller
      */
     public function create()
     {
-        $hasActive = MemberShip::where('user_id',Auth::id())->where('left_at')->whereHas('colocation',function ($q){
-            $q->where('status','active');
+        $hasActive = MemberShip::where('user_id',Auth::id())
+            ->whereNull('left_at')
+            ->whereHas('colocation',function ($q){
+                $q->where('status','active');
         })->exists();
 
         if($hasActive){
@@ -46,7 +55,9 @@ class ColocationController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
-        $hasActive = MemberShip::where('user_id',Auth::id())->whereNull('left_at')->exists();
+        $hasActive = MemberShip::where('user_id',Auth::id())->whereNull('left_at')->whereHas('colocation', function ($q){
+            $q->where('status','active');
+        })->exists();
 
         if($hasActive){
             return redirect()->route('colocations.index')->with('error', 'Vous avez déjà une colocation active.');
@@ -72,9 +83,16 @@ class ColocationController extends Controller
      */
     public function show(Colocation $colocation)
     {
-        $colocation->load(['owner','memberShips.user','invitations']);
+        $colocation->load(['owner','memberShips.user','invitations.sender']);
 
-        return view('colocations.show',compact('colocation'));
+        $stats = [
+            'members_active' => $colocation->memberShips->whereNull('left_at')->count(),
+            'pending_inv' => $colocation->invitations->whereNull('status','pending')->count(),
+            'is_owner' => Auth::id() ===  $colocation->owner_id,
+            'is_active' => $colocation->status === 'active'
+        ];
+
+        return view('colocations.show',compact('colocation','stats'));
     }
 
     /**

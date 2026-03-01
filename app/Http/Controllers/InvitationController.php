@@ -63,7 +63,7 @@ class InvitationController extends Controller
 
         Mail::to($invitation->invited_email)->send(new InvitationMail($invitation));
 
-        // return back()->with('success','Invitation envoyée avec succes .');
+        return back()->with('success','Invitation envoyée avec succes .');
     }
 
     /**
@@ -146,5 +146,14 @@ class InvitationController extends Controller
     public function destroy(Invitation $invitation)
     {
         //
+    }
+
+    public function create(Colocation $colocation){
+        abort_unless($colocation->owner_id === Auth::id() , 403);
+        abort_unless($colocation->status === 'active' , 403);
+
+        $colocation->load(['invitations' => fn($q) => $q->where('status','pending')]);
+
+        return view('invitations.create',compact('colocation'));
     }
 }

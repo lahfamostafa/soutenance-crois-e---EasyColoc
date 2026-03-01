@@ -2,14 +2,40 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Colocation;
 use App\Models\MemberShip;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 class MemberShipController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function quit(Colocation $colocation){
+        $userID = Auth::id();
+        if($colocation->owner_id === $userID){
+            return back()->with('error',"L'owner ne peux pas quiter la colocation !");
+        }
+
+        if($colocation->status !== 'active'){
+            return back()->with('error','Cette colocation est inactive');
+        }
+
+        $memberShip = MemberShip::where('colocation_id',$colocation->id)
+            ->where('user_id',$userID)
+            ->whereNull('left_at')->first();
+
+        if(!$memberShip){
+            return back()->with('error',"Vous n'etes pas membre active de cette colocation");
+        }
+
+        $memberShip->update([
+            'left_at' => now(),
+            'is_active' => false,
+        ]);
+
+        return redirect()->route('dashboard')->with('success','Vous avez quité la colocation');
+    }
+
+
     public function index()
     {
         //
