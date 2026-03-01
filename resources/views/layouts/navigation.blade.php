@@ -18,6 +18,11 @@
                 </div>
             </div>
 
+            <!-- Desktop nav -->
+            <x-nav-link :href="route('colocations.index')" :active="request()->routeIs('colocations.*')">
+                🏠 Colocations
+            </x-nav-link>
+
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">
@@ -71,6 +76,10 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
         </div>
+
+        <x-responsive-nav-link :href="route('colocations.index')" :active="request()->routeIs('colocations.*')">
+            🏠 Colocations
+        </x-responsive-nav-link>
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
