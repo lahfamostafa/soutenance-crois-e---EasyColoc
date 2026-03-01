@@ -6,6 +6,7 @@ use App\Models\Colocation;
 use App\Models\MemberShip;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MemberShipController extends Controller
 {
@@ -19,7 +20,8 @@ class MemberShipController extends Controller
             return back()->with('error','Cette colocation est inactive');
         }
 
-        $memberShip = MemberShip::where('colocation_id',$colocation->id)
+        $memberShip = MemberShip::with('user')
+            ->where('colocation_id',$colocation->id)
             ->where('user_id',$userID)
             ->whereNull('left_at')->first();
 
@@ -27,11 +29,33 @@ class MemberShipController extends Controller
             return back()->with('error',"Vous n'etes pas membre active de cette colocation");
         }
 
-        $memberShip->update([
-            'left_at' => now(),
-            'is_active' => false,
-        ]);
-
+        DB::transaction(function () use ($colocation,$memberShip){
+            if((float)$memberShip->balance < 0){
+                $memberShip->user->decrement('reputation');
+            }else{
+                $memberShip->user->increment('reputation');
+            }
+            $others = $colocation->memberShips()
+                ->whereNull('left_at')
+                ->where('id', '!=' ,$memberShip->id)
+                ->lockForUpdate()
+                ->get();
+    
+            $count = $others->count();
+            if($count > 0 && (float)$memberShip->balance != 0.0){
+                $delta = (float)$memberShip->balance / $count;
+                foreach ($others as $m) {
+                    $m->balance = (float)$m->balance - (float)$delta;
+                    $m->save();
+                }
+            }
+    
+            $memberShip->update([
+                'balance' => 0,
+                'left_at' => now(),
+                'is_active' => false,
+            ]);
+        });
         return redirect()->route('dashboard')->with('success','Vous avez quité la colocation');
     }
 
