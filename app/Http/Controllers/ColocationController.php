@@ -7,6 +7,9 @@ use App\Models\MemberShip;
 use GrahamCampbell\ResultType\Success;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+use function Symfony\Component\Clock\now;
 
 class ColocationController extends Controller
 {
@@ -83,11 +86,11 @@ class ColocationController extends Controller
      */
     public function show(Colocation $colocation)
     {
-        $colocation->load(['owner','memberShips.user','invitations.sender']);
+        $colocation->load(['owner','memberShips.user','invitations.sender','expences.payer']);
 
         $stats = [
             'members_active' => $colocation->memberShips->whereNull('left_at')->count(),
-            'pending_inv' => $colocation->invitations->whereNull('status','pending')->count(),
+            'pending_inv' => $colocation->invitations->where('status','pending')->count(),
             'is_owner' => Auth::id() ===  $colocation->owner_id,
             'is_active' => $colocation->status === 'active'
         ];
@@ -128,9 +131,16 @@ class ColocationController extends Controller
     {
         $this->authorizeOwner($colocation);
 
-        $colocation->update([
-            'status' => 'inactive',
-        ]);
+        DB::transaction(function () use ($colocation){
+            $colocation->update([
+                'status' => 'inactive',
+            ]);
+
+            $colocation->memberShips()->whereNull('left_at')->update([
+                'left_at' => now(),
+                'is_active' => false,
+            ]);
+        });
 
         return redirect()->route('dashboard')->with('success','Colocation annulé');
     }
