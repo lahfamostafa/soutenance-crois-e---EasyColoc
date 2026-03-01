@@ -94,7 +94,13 @@ class InvitationController extends Controller
             return redirect()->route('dashboard')->with('error',"L'invitaion déja traitée .");
         }
 
-        $isActive = MemberShip::where('user_id',$user->id)->whereNull('left_at')->exists();
+        $isActive = MemberShip::where('user_id',$user->id)
+            ->where('is_active',true)
+            ->whereNull('left_at')
+            ->whereHas('colocation', function ($q) {
+                $q->where('status', 'active');
+            })
+            ->exists();
 
         if($isActive){
             return redirect()->route('dashboard')->with('error','Vous avez déja une colocation active .');
