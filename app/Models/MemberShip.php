@@ -15,6 +15,7 @@ class MemberShip extends Model
         'balance',
         'joined_at',
         'left_at',
+        'is_active',
     ];
 
     public function user(){

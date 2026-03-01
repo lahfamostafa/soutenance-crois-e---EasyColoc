@@ -21,7 +21,6 @@ return new class extends Migration
             $table->enum('role',['user','admin'])->default('user');
             $table->integer('reputation')->default(0);
             $table->boolean('is_banned')->default(false);
-            $table->decimal('balance')->default(0);
         
             $table->rememberToken();
             $table->timestamps();
@@ -53,7 +52,7 @@ return new class extends Migration
         Schema::dropIfExists('sessions');
 
         Schema::table('table_users', function (Blueprint $table) {
-            $table->dropColumn(['reputation','is_banned','balance']);
+            $table->dropColumn(['reputation','is_banned']);
         });
     }
 };
